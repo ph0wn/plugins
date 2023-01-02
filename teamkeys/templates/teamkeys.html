@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+
+{% block stylesheets %}
+{% endblock %}
+
+{% block content %}
+
+<div class="jumbotron">
+  <div class="container">
+    <h1>Team Keys</h1>
+  </div>
+</div>
+<div class="container">
+  <div class="row">
+    <div class="col-md-12">
+      {% if teamkeys %}
+      <table id="teamkeys" class="table table-striped">
+        <thead>
+          <tr>
+            <td class="text-center d-none d-md-table-cell d-lg-table-cell"><b>Label</b></td>
+            <td class="text-center d-none d-md-table-cell d-lg-table-cell"><b>Value</b></td>
+          </tr>
+        </thead>
+        <tbody>
+          {% for (k, v) in teamkeys.items() %}
+          <tr>
+            <td class="text-center">{{ k }} </td>
+            <td class="text-center">{{ v }} </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      No team keys found. Contact the admins.
+      Your team id: {{ team_id }}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

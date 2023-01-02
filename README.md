@@ -1,0 +1,2 @@
+- teamkeys: CTFd plugin to handle team-specific data per challenge.
+- hardware-monitoring: CTFd plugin to lend hardware equipment to teams.

@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+
+<div id="confirm" class="modal fade" tabindex="-1">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h2 class="text-center"><span id="confirm-queue-title"></span></h2>
+			</div>
+			<div class="modal-body">
+				<div class="row-fluid">
+					<div class="col-md-12">
+						<form method="POST">
+							<input id="nonce" type="hidden" name="nonce" value="{{ Session.nonce }}">
+							<div class="small-6 small-centered text-center columns">
+								<p>Are you sure you want to <span id="confirm-queue-method"></span> <strong id="confirm-queue-name"></strong>?</p>
+								<button type="button" data-dismiss="modal" class="btn btn-theme btn-outlined">No</button>
+								<button type="button" id="confirm-queue" class="btn btn-theme btn-outlined">Yes</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+<div class="row">
+	<div class="col-11" style="margin-left: 30px">
+		<br>
+		<div style="text-align:center">
+			<div class="col" style="margin-left: 30px">
+				<div class="container text-center">
+					<h3><strong>Hardware Reservations</strong></h3>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<br>
+<br>
+<br>
+
+<div class="row">
+	<div class="col-5" style="margin-left: 30px">
+		<br>
+		<div style="text-align:center">
+			{% if queues %}
+			<table class="table table-striped">		
+				<colgroup>
+		       <col span="1" style="width: 33%;">
+		       <col span="1" style="width: 33%;">
+		       <col span="1" style="width: 33%;">
+    		</colgroup>
+				<thead>
+					<tr>
+						<td class="text-center"><strong>Equipment Name</strong>
+						</td>
+						<td class="text-center"><strong>Challenge Name</strong>
+						</td>						
+						<td class="text-center"><strong>State</strong>
+						</td>
+					</tr>
+				</thead>
+				<tbody>	
+					{% for q in queues %}
+					<tr style="{{'background-color:#CAFFBF;' if q.state=='ready'}} {{'background-color:#FFADAD;' if q.state=='in_use'}} {{'background-color:#FDFFB6;' if q.state=='being_prepared'}}">
+						<td class="text-center queue_item" id="{{ q.id }}" name="queue_state_{{ q.equipment_name }}">{{ q.equipment_name }}</td>
+						<td class="text-center">{{ q.challenge_name }}</td>
+						{% if q.state == 'in_use' %}
+						<td class="text-center">In use by {{q.team_name}}</td>
+						{% else %}
+						<td class="text-center">{{q.state}}</td>
+						{% endif %}
+					</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+			{% endif %}
+		</div>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-8" style="margin-left: 30px">
+		<br>
+		<div style="text-align:center">
+			{% if queues %}
+			{% for q in queues %}
+			<table class="table table-striped">		
+				<thead>
+					<tr>
+						<td class="text-center"><strong>Equipment Name</strong>
+						</td>	
+						<td class="text-center"><strong>Challenge Name</strong>
+						</td>
+						<td class="text-center"><strong>Start Time</strong>
+						</td>
+						<td class="text-center"><strong>End Time</strong>
+						</td>
+						<td class="text-center"><strong>Slot length</strong>
+						</td>
+						<td class="text-center"><strong>View Slots</strong>
+						</td>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td class="text-center queue_item" id="{{ q.id }}" name="queue_{{ q.equipment_name }}">{{ q.equipment_name }}</td>
+						<td class="text-center">{{ q.challenge_name }}</td>
+						<td class="text-center">{{ q.start }}</td>
+						<td class="text-center">{{ q.end }}</td>
+						<td class="text-center">{{ q.interval }} minutes</td>
+						<td class="text-center">
+							<span>
+									<i class="fas fa-eye show_slots"></i> 
+							</span>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<table class="table table-striped" name="slots_{{ q.equipment_name }}" style="text-align:center; display:none;">
+				<thead>
+					<tr>
+						<td class="text-center"><strong>Start Time</strong>
+						</td>
+						<td class="text-center"><strong>End Time</strong>
+						</td>
+						<td class="text-center"><strong>Reservation</strong>
+						</td>
+						<td class="text-center"><strong>Team Name</strong>
+						</td>
+						<td class="text-center"><strong>Book Slot</strong>
+						</td>
+						<td class="text-center"><strong>Cancel Slot</strong>
+						</td>
+					</tr>
+				</thead>
+				<tbody>
+					{% for s in slots %}
+					{% if s.equipment_name == q.equipment_name %}
+					<tr class="text-center"  style="{{'background-color:#CFFACD;' if not s.filled}} {{'background-color:#ffaca5;' if s.filled}} {{'background-color:#E5E5E5; pointer-events: none;' if s.over}}">
+						<td class="text-center slot_item" id="{{ s.id }}" name="slot_{{ s.equipment_name }}_{{ s.id }}">{{ s.start }}</td>
+						<td class="text-center">{{ s.end }}</td>
+						{% if s.filled %}
+						<td class="text-center">Yes</td>
+						{% else %}
+						<td class="text-center">No</td>
+						{% endif %}
+						<td class="text-center">{{ s.team_name }}</td>
+						{% if not s.filled %}
+						<td class="text-center">
+							<span>
+									<i class="fa fa-book book_slot"></i> 
+							</span>
+						</td>
+						{% else %}
+						<td class="text-center">
+							<span>
+									<i class="fa fa-book" style="opacity:0.3;"></i> 
+							</span>
+						</td>
+						{% endif %}
+						{% if s.team_name == team_name and q.team_name != team_name %}
+						<td class="text-center">
+							<span>
+									<i class="fa fa-times free_slot"></i> 
+							</span>
+						</td>
+						{% else %}
+						<td class="text-center">
+							<span>
+									<i class="fa fa-times" style="opacity:0.3;"></i> 
+							</span>
+						</td>
+						{% endif %}
+					</tr>
+					{% endif %}		
+					{% endfor %}
+				</tbody>
+			</table>	
+				{% endfor %}
+			{% endif %}
+		</div>
+	</div>
+</div>
+
+
+
+{% endblock %}
+
+{% block scripts %}
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script>
+
+function load_confirm_modal(title, url, queue_name){
+	var modal = $('#confirm')
+	modal.find('#confirm-queue-name').text(queue_name)
+	modal.find('#confirm-queue-title').text(title)
+	modal.find('#confirm-queue-method').text(title.toLowerCase())
+	$('#confirm form').attr('action', url);
+	$('#confirm').modal('show');
+}
+
+$(document).ready(function(){
+	$('[data-toggle="tooltip"]').tooltip();
+});
+
+$('#confirm-queue').click(function(e){
+	e.preventDefault();
+	var id = $('#confirm input[name="id"]').val()
+	var user_data = $('#confirm form').serializeArray()
+	$.post($('#confirm form').attr('action'), $('#confirm form').serialize(), function(data){
+		var data = $.parseJSON(JSON.stringify(data))
+		if (data == "1"){
+			location.reload()
+		}
+	})
+});
+
+$('.free_slot').click(function(){
+	var elem = $(this).parent().parent().parent().find('.slot_item');
+	var slot = elem.attr('id');
+	var slot_name = elem.attr('name');
+	load_confirm_modal('Free this slot', '/admin/hardware_monitoring/'+slot+'/free_slot', "")
+});
+
+$('.book_slot').click(function(){
+	var elem = $(this).parent().parent().parent().find('.slot_item');
+	var slot = elem.attr('id');
+	var slot_name = elem.attr('name');
+	load_confirm_modal('Book this slot', '/hardware_monitoring/'+slot+'/book_slot', "")
+});
+
+
+$('.show_slots').click(function(){
+	var elem = $(this).parent().parent().parent().find('.queue_item');
+	var queue_name = elem.attr('name');
+	var slots_name = 'slots_' + queue_name.split('_')[1];
+	var element = document.getElementsByName(slots_name)[0];
+	if (element.style.display === "none") {
+    element.style.display = "block";
+  } else {
+    element.style.display = "none";
+  }
+	
+});
+
+
+
+</script>
+{% endblock %}

@@ -1,0 +1,370 @@
+{% extends "admin/base.html" %}
+
+{% block content %}
+
+<div class="modal fade" id="create-queue-modal" tabindex="-1" role="dialog" aria-labelledby="create-queue-modal-label">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h4 class="modal-title" id="container-modal-label">Create a queue</h4>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span 
+						aria-hidden="true">&times;</span></button>
+			</div>
+			<form method="POST" action="{{ request.script_root }}/admin/hardware_monitoring/create_queue" enctype="multipart/form-data">
+				<div class="modal-body">
+						<div class="form-group">
+							<label for="challenge_name">Name of the challenge</label>
+							<select type="text" class="form-control" name="challenge_name">
+						   		<option value="">Please choose a challenge</option>
+						   		{% for c in challenges %}
+						   		<option value="{{ c.name }}">{{ c.name }}</option>
+						   		{% endfor %}
+						   	</select>
+							<label for="equipment_name" style="margin-top: 30px">Name of the equipment(no "_". ex: arduino123)</label>
+							<input type="text" class="form-control" name="equipment_name">
+							<label for="start" style="margin-top: 30px">Date and Time of the start of the queue</label>
+							<input type="datetime-local" class="form-control" name="start">
+							<label for="end" style="margin-top: 30px">Date and Time of the end of the queue</label>
+							<input type="datetime-local" class="form-control" name="end">
+							<label for="interval" style="margin-top: 30px">Number of minutes in a reservation slot</label>
+							<input type="number" class="form-control" name="interval">
+						</div>
+						<input type="hidden" value="{{ Session.nonce }}" name="nonce" id="nonce">
+				</div>
+				<div class="modal-footer">
+					<button type="submit" class="btn btn-primary">Create</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div class="modal fade" id="delay-slots-modal" tabindex="-1" role="dialog" aria-labelledby="delay-slots-modal-label">
+	<div class="modal-dialog" role="document">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h4 class="modal-title" id="container-modal-label">Delay slots</h4>
+				<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span 
+						aria-hidden="true">&times;</span></button>
+			</div>
+			<form method="POST" action="{{ request.script_root }}/admin/hardware_monitoring/delay_slots" enctype="multipart/form-data">
+				<div class="modal-body">
+						<div class="form-group">
+							<label for="challenge_name">Name of the equipment</label>
+							<select type="text" class="form-control" name="equipment_name">
+						   		<option value="">Please choose an equipment</option>
+						   		{% for q in queues %}
+						   		<option value="{{ q.equipment_name }}">{{ q.equipment_name }}</option>
+						   		{% endfor %}
+						   	</select>
+							<label for="delay">How much do you want to delay the slots? (in minutes)</label>
+							<input type="number" class="form-control" name="delay">
+						</div>
+						<input type="hidden" value="{{ Session.nonce }}" name="nonce" id="nonce">
+				</div>
+				<div class="modal-footer">
+					<button type="submit" class="btn btn-primary">Delay</button>
+				</div>
+			</form>
+		</div>
+	</div>
+</div>
+
+<div id="confirm" class="modal fade" tabindex="-1">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			<div class="modal-header">
+				<h2 class="text-center"><span id="confirm-queue-title"></span></h2>
+			</div>
+			<div class="modal-body">
+				<div class="row-fluid">
+					<div class="col-md-12">
+						<form method="POST">
+							<input id="nonce" type="hidden" name="nonce" value="{{ Session.nonce }}">
+							<div class="small-6 small-centered text-center columns">
+								<p>Are you sure you want to <span id="confirm-queue-method"></span> <strong id="confirm-queue-name"></strong>?</p>
+								<button type="button" data-dismiss="modal" class="btn btn-theme btn-outlined">No</button>
+								<button type="button" id="confirm-queue" class="btn btn-theme btn-outlined">Yes</button>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+
+
+<div class="row">
+	<div class="col-11" style="margin-left: 30px">
+		<br>
+		<div style="text-align:center">
+			<div class="col" style="margin-left: 30px">
+				<div class="container text-center">
+					<h3><U>Administration panel for hardware reservations</U></h3>
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
+<br>
+<br>
+<br>
+<div class="row">
+	<div class="col-2" style="margin-left: 30px">
+		<div class="container text-center">
+			<span class="btn btn-theme btn-primary" data-toggle="modal" data-target="#create-queue-modal">
+				Create a reservation queue
+			</span>
+		</div>
+	</div>
+
+	<div class="col-2" style="margin-left: 30px">
+		<div class="container text-center">
+			<span class="btn btn-theme btn-primary" data-toggle="modal" data-target="#delay-slots-modal">
+				Delay slots
+			</span>
+		</div>
+	</div>
+
+</div>
+
+<div class="row">
+	<div class="col-10" style="margin-left: 30px">
+		<br>
+		<div style="text-align:center">
+			{% if queues %}
+			<h2> Queue status </h2>
+			<table class="table table-striped">		
+				<thead>
+					<tr>
+						<td class="text-center"><strong>Equipment Name</strong>
+						</td>
+						<td class="text-center"><strong>Challenge Name</strong>
+						</td>						
+						<td class="text-center"><strong>State</strong>
+						<td class="text-center"><strong>Set "Device Returned by Team"</strong>
+						</td>
+						<td class="text-center"><strong>Set "Ready to Lend"</strong>
+					</tr>
+				</thead>
+				<tbody>	
+					{% for q in queues %}
+					<tr style="{{'background-color:#CAFFBF;' if q.state=='ready'}} {{'background-color:#FFADAD;' if q.state=='in_use'}} {{'background-color:#FDFFB6;' if q.state=='being_prepared'}}">
+						<td class="text-center queue_item" id="{{ q.id }}" name="queue_state_{{ q.equipment_name }}">{{ q.equipment_name }}</td>
+						<td class="text-center">{{ q.challenge_name }}</td>
+						{% if q.state == 'in_use' %}
+						<td class="text-center">In use by {{q.team_name}}</td>
+						{% else %}
+						<td class="text-center">{{q.state}}</td>
+						{% endif %}
+						<td class="text-center"><span class="btn btn-theme btn-outlined set_being_prepared" style="background-color:#FFCC02;"></span></td>
+						<td class="text-center"><span class="btn btn-theme btn-outlined set_ready" style="background-color:#00D38C;"></span></td>
+					</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+			{% endif %}
+		</div>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-10" style="margin-left: 30px">
+		<br>
+		<div style="text-align:center">
+			{% if queues %}
+			<h2>Reservation queues</h2>
+			<table class="table table-striped">		
+				<thead>
+					<tr>
+						<td class="text-center"><strong>Equipment Name</strong>
+						</td>						
+						<td class="text-center"><strong>Challenge Name</strong>
+						</td>
+						<td class="text-center"><strong>Start Time</strong>
+						</td>
+						<td class="text-center"><strong>End Time</strong>
+						</td>
+						<td class="text-center"><strong>Slot length</strong>
+						</td>
+						<td class="text-center"><strong>View / Hide Slots</strong>
+						</td>
+						<td class="text-center"><strong>Remove Queue</strong>
+						</td>
+					</tr>
+				</thead>
+			{% for q in queues %}
+				<tbody>
+					<tr>
+						<td class="text-center queue_item" id="{{ q.id }}" name="queue_{{ q.equipment_name }}">{{ q.equipment_name }}</td>
+						<td class="text-center">{{ q.challenge_name }}</td>
+						<td class="text-center">{{ q.start }}</td>
+						<td class="text-center">{{ q.end }}</td>
+						<td class="text-center">{{ q.interval }} minutes</td>
+						<td class="text-center">
+							<span>
+									<i class="fas fa-eye show_slots"></i> 
+							</span>
+						</td>
+						<td class="text-center">
+							<span>
+									<i class="fa fa-times delete_queue"></i> 
+							</span>
+						</td>
+					</tr>
+				</tbody>
+			{% endfor %}	
+			</table>
+			{% for q in queues %}
+			<table class="table table-striped" name="slots_{{ q.equipment_name }}" style="text-align:center; border: 1px solid black; display:none;">
+				<thead style="background-color:#B1B1B1;">
+					<tr>
+						<td class="text-center"><strong>Start Time </strong>
+						</td>
+						<td class="text-center"><strong>End Time</strong>
+						</td>
+						<td class="text-center"><strong>Reservation</strong>
+						</td>
+						<td class="text-center"><strong>Team Name</strong>
+						</td>
+						<td class="text-center"><strong>Cancel Slot</strong>
+						</td>
+						</td>
+						<td class="text-center"><strong>Set "In use..." for {{ q.equipment_name }} (challenge {{ q.challenge_name }})</strong>
+						</td>
+					</tr>
+				</thead>
+				<tbody>
+					{% for s in slots %}
+					{% if s.equipment_name == q.equipment_name %}
+					<!-- pointer-events: none; -->
+					<tr class="text-center" style="{{'background-color:#CFFACD;' if not s.filled}} {{'background-color:#ffaca5;' if s.filled}} {{'background-color:#E5E5E5;' if s.over}} {{'font-style: italic;' if s.over}} {{'color: #b6b6b6;' if s.over}}">
+						<td class="text-center slot_item" id="{{ s.id }}" name="slot_{{ s.equipment_name }}_{{ s.id }}">{{ s.start }}</td>
+						<td class="text-center">{{ s.end }}</td>
+						{% if s.filled %}
+						<td class="text-center">Yes</td>
+						{% else %}
+						<td class="text-center">No</td>
+						{% endif %}
+						<td class="text-center">{{ s.team_name }}</td>
+						<td class="text-center">
+							<span>
+									<i class="fa fa-times free_slot"></i> 
+							</span>
+						</td>
+						<td class="text-center"><span class="btn btn-theme btn-outlined set_in_use" style="background-color:#FF2F2F;"></span></td>
+					</tr>
+					{% endif %}		
+					{% endfor %}
+				</tbody>
+			</table>	
+				{% endfor %}
+			{% endif %}
+		</div>
+	</div>
+</div>
+
+
+
+
+{% endblock %}
+
+{% block scripts %}
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+<script>
+
+function load_confirm_modal(title, url, queue_name){
+	var modal = $('#confirm')
+	modal.find('#confirm-queue-name').text(queue_name)
+	modal.find('#confirm-queue-title').text(title)
+	modal.find('#confirm-queue-method').text(title.toLowerCase())
+	$('#confirm form').attr('action', url);
+	$('#confirm').modal('show');
+}
+
+$(document).ready(function(){
+	$('[data-toggle="tooltip"]').tooltip();
+});
+
+$('#confirm-queue').click(function(e){
+	e.preventDefault();
+	var id = $('#confirm input[name="id"]').val()
+	var user_data = $('#confirm form').serializeArray()
+	$.post($('#confirm form').attr('action'), $('#confirm form').serialize(), function(data){
+		var data = $.parseJSON(JSON.stringify(data))
+		if (data == "1"){
+			location.reload()
+		}
+	})
+});
+
+$('.delete_queue').click(function(){
+	var elem = $(this).parent().parent().parent().find('.queue_item');
+	var queue = elem.attr('id');
+	var queue_name = elem.attr('name');
+	load_confirm_modal('Remove Queue', '/admin/hardware_monitoring/'+queue+'/delete_queue', queue_name)
+});
+
+$('.free_slot').click(function(){
+	var elem = $(this).parent().parent().parent().find('.slot_item');
+	var slot = elem.attr('id');
+	var slot_name = elem.attr('name');
+	load_confirm_modal('Free Slot', '/admin/hardware_monitoring/'+slot+'/free_slot', slot_name)
+});
+
+
+$('.show_slots').click(function(){
+	var elem = $(this).parent().parent().parent().find('.queue_item');
+	var queue_name = elem.attr('name');
+	var slots_name = 'slots_' + queue_name.split('_')[1];
+	var element = document.getElementsByName(slots_name)[0];
+	if (element.style.display === "none") {
+    element.style.display = "block";
+  } else {
+    element.style.display = "none";
+  }
+	
+});
+
+$('.set_in_use').click(function(){
+	var elem = $(this).parent().parent().find('.slot_item');
+	var slot_id = elem.attr('id');
+	const url = '{{ request.script_root }}/admin/hardware_monitoring/set_in_use';
+	const data = {'slot_id': slot_id, 'nonce':'{{ Session.nonce }}'};
+	$.post(url,data,function(data){
+		var data = $.parseJSON(JSON.stringify(data))
+		if (data == "1"){
+			location.reload()
+		}
+	})
+});
+
+$('.set_being_prepared').click(function(){
+	var elem = $(this).parent().parent().find('.queue_item');
+	var queue_id = elem.attr('id');
+	const url = '{{ request.script_root }}/admin/hardware_monitoring/set_queue_state';
+	const data = {'queue_id': queue_id, 'target_state':'being_prepared','nonce':'{{ Session.nonce }}'};
+	$.post(url,data,function(data){
+		var data = $.parseJSON(JSON.stringify(data))
+		if (data == "1"){
+			location.reload()
+		}
+	})
+});
+
+$('.set_ready').click(function(){
+	var elem = $(this).parent().parent().find('.queue_item');
+	var queue_id = elem.attr('id');
+	const url = '{{ request.script_root }}/admin/hardware_monitoring/set_queue_state';
+	const data = {'queue_id': queue_id, 'target_state':'ready','nonce':'{{ Session.nonce }}'};
+	$.post(url,data,function(data){
+		var data = $.parseJSON(JSON.stringify(data))
+		if (data == "1"){
+			location.reload()
+		}
+	})
+});
+
+</script>
+{% endblock %}
